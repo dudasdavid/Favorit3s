@@ -17,7 +17,7 @@ locale.setlocale(locale.LC_ALL, 'C')
 
 
 # Configuration flags
-USE_TC = True # Set to True to use Total commander and False to use Windows explorer
+USE_TC = True # Set to True to use Total commander or False to use Windows explorer
 
 # Dark Windows theme. wx.SystemOptions lets wx ask Windows for dark native
 # chrome where the installed wxPython version supports it.
