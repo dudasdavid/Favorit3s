@@ -1368,7 +1368,7 @@ if lockExists:
     pythonPids = []
     for pid in psutil.pids():                               # iterate through active PIDs
         if pid == lockPid:                                  # check if the locking PID is active in the system
-            if psutil.Process(pid).name() == "python.exe":  # check if the active PID is a python.exe and it's not just re-used.
+            if psutil.Process(pid).name() in ["python.exe", "favorit3s.exe"]:  # check if the active PID is a python.exe and it's not just re-used.
                 pythonPids.append(pid)
             
     # if the PID from lockfile is still running within the OS, bring it to the front
