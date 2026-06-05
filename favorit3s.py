@@ -10,6 +10,7 @@ import csv
 import subprocess
 import os
 import time
+import ctypes
 
 import locale
 locale.setlocale(locale.LC_ALL, 'C')
@@ -17,6 +18,102 @@ locale.setlocale(locale.LC_ALL, 'C')
 
 # Configuration flags
 USE_TC = True # Set to True to use Total commander and False to use Windows explorer
+
+# Dark Windows theme. wx.SystemOptions lets wx ask Windows for dark native
+# chrome where the installed wxPython version supports it.
+wx.SystemOptions.SetOption("msw.dark-mode", 2)
+DARK_BG = wx.Colour(32, 32, 32)
+DARK_PANEL = wx.Colour(43, 43, 43)
+DARK_FIELD = wx.Colour(25, 25, 25)
+DARK_BORDER = wx.Colour(64, 64, 64)
+DARK_TEXT = wx.Colour(240, 240, 240)
+DARK_MUTED_TEXT = wx.Colour(180, 180, 180)
+DARK_ACCENT = wx.Colour(0, 120, 215)
+
+
+def enable_windows_dark_widgets(window):
+    if os.name != "nt" or window is None:
+        return
+
+    try:
+        hwnd = window.GetHandle()
+    except Exception:
+        hwnd = None
+
+    if not hwnd:
+        return
+
+    try:
+        value = ctypes.c_int(1)
+        # Windows 10 20H1+ uses attribute 20; older dark-mode builds used 19.
+        for attribute in (20, 19):
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                ctypes.c_void_p(hwnd),
+                ctypes.c_uint(attribute),
+                ctypes.byref(value),
+                ctypes.sizeof(value)
+            )
+        ctypes.windll.user32.RedrawWindow(
+            ctypes.c_void_p(hwnd),
+            None,
+            None,
+            0x0001 | 0x0400 | 0x0020
+        )
+    except Exception:
+        pass
+
+    try:
+        ctypes.windll.uxtheme.SetWindowTheme(
+            ctypes.c_void_p(hwnd),
+            ctypes.c_wchar_p("DarkMode_Explorer"),
+            None
+        )
+    except Exception:
+        pass
+
+
+def apply_dark_theme(window):
+    if window is None:
+        return
+
+    enable_windows_dark_widgets(window)
+
+    if isinstance(window, (wx.TextCtrl, wx.SearchCtrl)):
+        window.SetBackgroundColour(DARK_FIELD)
+        window.SetForegroundColour(DARK_TEXT)
+    elif isinstance(window, wx.TreeCtrl):
+        window.SetBackgroundColour(DARK_FIELD)
+        window.SetForegroundColour(DARK_TEXT)
+    elif isinstance(window, wx.Button):
+        window.SetBackgroundColour(DARK_PANEL)
+        window.SetForegroundColour(DARK_TEXT)
+    elif isinstance(window, (wx.Frame, wx.Dialog, wx.Panel)):
+        window.SetBackgroundColour(DARK_BG)
+        window.SetForegroundColour(DARK_TEXT)
+    elif isinstance(window, wx.StaticText):
+        window.SetForegroundColour(DARK_TEXT)
+
+    for child in window.GetChildren():
+        apply_dark_theme(child)
+
+    window.Refresh()
+
+
+def show_dark_text_dialog(parent, message, caption, value=""):
+    dlg = wx.TextEntryDialog(parent, message, caption, value)
+    apply_dark_theme(dlg)
+    result = dlg.ShowModal()
+    text = dlg.GetValue()
+    dlg.Destroy()
+    return result, text
+
+
+def show_dark_message(parent, message, caption, style=wx.OK):
+    dlg = wx.MessageDialog(parent, message, caption, style)
+    apply_dark_theme(dlg)
+    result = dlg.ShowModal()
+    dlg.Destroy()
+    return result
 
 # icon stored as py embedded image
 main_icon = PyEmbeddedImage(
@@ -260,6 +357,8 @@ class HideableWidget(wx.Frame):
 
         #self.frame = wx.Frame.__init__ (self, None, id = wx.ID_ANY, title = u"Favorites2.1", pos = wx.DefaultPosition, size = wx.Size(self.size[0],self.size[1]), style = wx.CAPTION|wx.CLOSE_BOX|wx.MINIMIZE_BOX|wx.STAY_ON_TOP|wx.SYSTEM_MENU|wx.TAB_TRAVERSAL)
         self.SetIcon(main_icon.GetIcon()) # Fix icon first
+        self.SetBackgroundColour(DARK_BG)
+        self.SetForegroundColour(DARK_TEXT)
         #self.SetSizeHintsSz(wx.DefaultSize, wx.DefaultSize)
         
         # we only have a single tree controller
@@ -271,6 +370,7 @@ class HideableWidget(wx.Frame):
         self.help_button = wx.Button(self, wx.ID_ANY, "?", wx.DefaultPosition, wx.Size(15,-1), wx.BORDER_NONE)
         font = wx.Font(8, wx.FONTFAMILY_MODERN, 0, 90, underline = False, faceName ="")
         self.help_button.SetFont(font)
+        apply_dark_theme(self)
         topSizer = wx.BoxSizer(wx.HORIZONTAL)
         verticalSizer = wx.BoxSizer(wx.VERTICAL)
         
@@ -331,6 +431,7 @@ class HideableWidget(wx.Frame):
 
         self.Centre()
         self.Show()
+        apply_dark_theme(self)
 
     def on_activate(self, event):
         if event.GetActive():
@@ -574,10 +675,7 @@ class HideableWidget(wx.Frame):
         print(pieces)
     
         if len(pieces) == 0:
-            newItemDialog = wx.TextEntryDialog(None,'Add a new main folder:','New main folder', '')
-            result = newItemDialog.ShowModal()
-            newItem = newItemDialog.GetValue()
-            newItemDialog.Destroy()
+            result, newItem = show_dark_text_dialog(self, 'Add a new main folder:', 'New main folder', '')
             
             if result != wx.ID_OK:
                 return
@@ -585,17 +683,14 @@ class HideableWidget(wx.Frame):
             # check for invalid characters: , and ;
             if "," in newItem or ";" in newItem:
                 print(f"[WARN] , or ; is not allowed in the name!")
-                wx.MessageBox("Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.ICON_ERROR)
+                show_dark_message(self, "Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.OK | wx.ICON_ERROR)
                 return
                 
             database[newItem] = {}
             print(f"[INFO] New main folder {newItem} was added")
             
         elif len(pieces) == 1:
-            newItemDialog = wx.TextEntryDialog(None,'Add a new subfolder:','New subfolder', '')
-            result = newItemDialog.ShowModal()
-            newItem = newItemDialog.GetValue()
-            newItemDialog.Destroy()
+            result, newItem = show_dark_text_dialog(self, 'Add a new subfolder:', 'New subfolder', '')
             
             if result != wx.ID_OK:
                 return
@@ -603,17 +698,14 @@ class HideableWidget(wx.Frame):
             # check for invalid characters: , and ;
             if "," in newItem or ";" in newItem:
                 print(f"[WARN] , or ; is not allowed in the name!")
-                wx.MessageBox("Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.ICON_ERROR)
+                show_dark_message(self, "Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.OK | wx.ICON_ERROR)
                 return
                 
             database[pieces[0]][newItem] = {}
             print(f"[INFO] New subfolder {newItem} was added")
             
         elif len(pieces) == 2:
-            newAliasDialog = wx.TextEntryDialog(None,'Add a new favorite:','New favorite', 'alias')
-            result = newAliasDialog.ShowModal()
-            alias = newAliasDialog.GetValue()
-            newAliasDialog.Destroy()
+            result, alias = show_dark_text_dialog(self, 'Add a new favorite:', 'New favorite', 'alias')
             
             if result != wx.ID_OK:
                 return
@@ -621,13 +713,10 @@ class HideableWidget(wx.Frame):
             # check for invalid characters: , and ;
             if "," in alias or ";" in alias:
                 print(f"[WARN] , or ; is not allowed in the name!")
-                wx.MessageBox("Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.ICON_ERROR)
+                show_dark_message(self, "Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.OK | wx.ICON_ERROR)
                 return
                 
-            newPathDialog = wx.TextEntryDialog(None,'Add the path to this favorite:\n%s' % alias ,'New path', 'path')
-            result = newPathDialog.ShowModal()
-            item = newPathDialog.GetValue()
-            newPathDialog.Destroy()
+            result, item = show_dark_text_dialog(self, 'Add the path to this favorite:\n%s' % alias, 'New path', 'path')
             
             if result != wx.ID_OK:
                 return
@@ -635,7 +724,7 @@ class HideableWidget(wx.Frame):
             # check for invalid characters: , and ;
             if "," in item or ";" in item:
                 print(f"[WARN] , or ; is not allowed in the name!")
-                wx.MessageBox("Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.ICON_ERROR)
+                show_dark_message(self, "Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.OK | wx.ICON_ERROR)
                 return
     
             # \\prestagroup.com\\global was added to handle files and folders from the network drive instead of X:\
@@ -653,7 +742,7 @@ class HideableWidget(wx.Frame):
                 print(f"[INFO] New website {item} was added")
                 linkType = "link"
             else:
-                wx.MessageBox("You entered an invalid path!", 'Warning', wx.OK | wx.ICON_WARNING)
+                show_dark_message(self, "You entered an invalid path!", 'Warning', wx.OK | wx.ICON_WARNING)
                 return
     
             database[pieces[0]][pieces[1]][alias] = {}
@@ -684,13 +773,13 @@ class HideableWidget(wx.Frame):
         
         # main folder
         if len(pieces) == 1:
-            result = wx.MessageBox("Are you sure deleting the main folder?", 'Warning', wx.OK | wx.CANCEL | wx.ICON_WARNING)
+            result = show_dark_message(self, "Are you sure deleting the main folder?", 'Warning', wx.OK | wx.CANCEL | wx.ICON_WARNING)
             if result != wx.OK:
                 return
             del database[pieces[0]]
         # subfolder
         elif len(pieces) == 2:
-            result = wx.MessageBox("Are you sure deleting the subfolder?", 'Warning', wx.OK | wx.CANCEL | wx.ICON_WARNING)
+            result = show_dark_message(self, "Are you sure deleting the subfolder?", 'Warning', wx.OK | wx.CANCEL | wx.ICON_WARNING)
             if result != wx.OK:
                 return
             del database[pieces[0]][pieces[1]]
@@ -728,10 +817,7 @@ class HideableWidget(wx.Frame):
         #print(pieces)
         
         # get the new name into renameItem variable
-        newItemDialog = wx.TextEntryDialog(None,'Rename your favorite','Rename', pieces[-1])
-        result = newItemDialog.ShowModal()
-        renameItem = newItemDialog.GetValue()
-        newItemDialog.Destroy()
+        result, renameItem = show_dark_text_dialog(self, 'Rename your favorite', 'Rename', pieces[-1])
         
         if result != wx.ID_OK:
             return
@@ -739,7 +825,7 @@ class HideableWidget(wx.Frame):
         # check for invalid characters: , and ;
         if "," in renameItem or ";" in renameItem:
             print(f"[WARN] , or ; is not allowed in the name!")
-            wx.MessageBox("Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.ICON_ERROR)
+            show_dark_message(self, "Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.OK | wx.ICON_ERROR)
             return
             
         #database[newItem] = {}
@@ -810,10 +896,7 @@ class HideableWidget(wx.Frame):
         # get the new path into editItem variable
         oldPath = database[pieces[0]][pieces[1]][pieces[2]]["path"]
         oldType = database[pieces[0]][pieces[1]][pieces[2]]["type"]
-        newItemDialog = wx.TextEntryDialog(None,'Edit your link','Edit', oldPath)
-        result = newItemDialog.ShowModal()
-        editItem = newItemDialog.GetValue()
-        newItemDialog.Destroy()
+        result, editItem = show_dark_text_dialog(self, 'Edit your link', 'Edit', oldPath)
         
         if result != wx.ID_OK:
             return
@@ -821,7 +904,7 @@ class HideableWidget(wx.Frame):
         # check for invalid characters: , and ;
         if "," in editItem or ";" in editItem:
             print(f"[WARN] , or ; is not allowed in the name!")
-            wx.MessageBox("Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.ICON_ERROR)
+            show_dark_message(self, "Error: `,` or `;` is not allowed in the name due to imitations of the CSV file!", "Name error", wx.OK | wx.ICON_ERROR)
             return
             
         print(f"[INFO] Link change from {oldPath} to {editItem} was requested, validity check starts now:")
@@ -849,7 +932,7 @@ class HideableWidget(wx.Frame):
                 print(f"[INFO] New password {editItem} was changed")
                 linkType = "password"
             else:
-                wx.MessageBox("You entered an invalid path!", 'Warning', wx.OK | wx.ICON_WARNING)
+                show_dark_message(self, "You entered an invalid path!", 'Warning', wx.OK | wx.ICON_WARNING)
                 return
     
             # update the link and type
@@ -904,9 +987,7 @@ class HideableWidget(wx.Frame):
         - Your search string will match non-visible metadata too\n\
               e.g. the type of the favorite (folder, svn, etc.)\n\nSupport:\n\
         david.dudas@thyssenkrupp.com"
-        dlg = wx.MessageDialog( self, helpText, "favorit3S.ai", wx.ICON_INFORMATION)
-        dlg.ShowModal()
-        dlg.Destroy()
+        show_dark_message(self, helpText, "favorit3S.ai", wx.OK | wx.ICON_INFORMATION)
         event.Skip()
 
     def createMenu(self):
