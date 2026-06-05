@@ -207,11 +207,20 @@ class HideableWidget(wx.Frame):
         #self.SetSizeHintsSz(wx.DefaultSize, wx.DefaultSize)
         
         # we only have a single tree controller
-        self.m_treeCtrl2 = wx.TreeCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.Size(self.size[0] - 15, self.size[1] - 80), wx.TR_DEFAULT_STYLE)
-        self.search_bar = wx.SearchCtrl(self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.Size(self.size[0] - 45,-1), wx.TE_LEFT)
+        tree_style = wx.TR_DEFAULT_STYLE
+        if is_dark_theme():
+            tree_style |= wx.BORDER_SIMPLE
+        self.m_treeCtrl2 = wx.TreeCtrl(self, wx.ID_ANY, wx.DefaultPosition, wx.Size(self.size[0] - 15, self.size[1] - 80), tree_style)
+
+        search_style = wx.TE_LEFT
+        if is_dark_theme():
+            search_style |= wx.BORDER_SIMPLE
+        self.search_bar = wx.SearchCtrl(self, wx.ID_ANY, wx.EmptyString, wx.DefaultPosition, wx.Size(self.size[0] - 45,-1), search_style)
         self.search_bar.ShowCancelButton(True)
-        #self.search_bar.SetHint("You can search your favorites here!")
         self.search_bar.SetDescriptiveText("Find your favorites here!")
+        if is_dark_theme():
+            self.search_bar.SetBackgroundColour(DARK_FIELD)
+            self.search_bar.SetForegroundColour(DARK_TEXT)
         self.help_button = wx.Button(self, wx.ID_ANY, "?", wx.DefaultPosition, wx.Size(15,-1), wx.BORDER_NONE)
         font = wx.Font(8, wx.FONTFAMILY_MODERN, 0, 90, underline = False, faceName ="")
         self.help_button.SetFont(font)
