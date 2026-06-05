@@ -1384,7 +1384,7 @@ if lockExists:
         
         # Don't show warning message, just exit after re-centering the window
         #wx.MessageBox("SVN bookmarks is already running!", 'Warning', wx.OK | wx.ICON_WARNING)
-        exit()
+        sys.exit()
 
 # create a lock file with the current pid
 file = open("lockfile", 'w')
