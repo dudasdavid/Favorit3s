@@ -1103,6 +1103,8 @@ def loadDataBase():
     file.close()
 
     # read the snapshot of open sections
+    if not os.path.exists('open_sections.txt'):
+        open('open_sections.txt', 'w', encoding='utf-8').close()
     section_file = open('open_sections.txt', encoding="utf-8")
     open_sections = section_file.readlines()
     open_sections = [line.rstrip('\n') for line in open_sections]
@@ -1203,6 +1205,8 @@ def loadSearch(searchText):
     csvReader = csv.reader(file)
 
     # read the snapshot of open sections
+    if not os.path.exists('open_sections.txt'):
+        open('open_sections.txt', 'w', encoding='utf-8').close()
     section_file = open('open_sections.txt', encoding="utf-8")
     open_sections = section_file.readlines()
     open_sections = [line.rstrip('\n') for line in open_sections]
