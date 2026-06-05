@@ -61,6 +61,15 @@ def set_theme(theme):
         wx.SystemOptions.SetOption("msw.dark-mode", 2 if is_dark_theme() else 0)
 
 
+def detect_theme_file():
+    if getattr(sys, 'frozen', False):
+        app_dir = os.path.dirname(sys.executable)
+    else:
+        app_dir = os.path.dirname(os.path.abspath(__file__))
+    marker_file = os.path.join(app_dir, 'light')
+    return THEME_LIGHT if os.path.exists(marker_file) else THEME_DARK
+
+
 def parse_command_line():
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--theme", choices=(THEME_DARK, THEME_LIGHT), help="Theme to use")
@@ -71,7 +80,7 @@ def parse_command_line():
     if args.theme:
         set_theme(args.theme)
     else:
-        set_theme(CURRENT_THEME)
+        set_theme(detect_theme_file())
 
     if unknown:
         print(f"[WARN] Ignoring unknown arguments: {' '.join(unknown)}")
