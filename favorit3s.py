@@ -164,26 +164,98 @@ def apply_theme(window):
     elif isinstance(window, (wx.Frame, wx.Dialog, wx.Panel)):
         window.SetBackgroundColour(get_theme_color(DARK_BG, LIGHT_BG))
         window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
+    elif isinstance(window, wx.Menu):
+        try:
+            window.SetBackgroundColour(get_theme_color(DARK_PANEL, LIGHT_PANEL))
+            window.SetTextColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
+        except Exception:
+            pass
+        for item in window.GetMenuItems():
+            try:
+                item.SetBackgroundColour(get_theme_color(DARK_PANEL, LIGHT_PANEL))
+                item.SetTextColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
+            except Exception:
+                pass
     elif isinstance(window, wx.StaticText):
         window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
 
-    for child in window.GetChildren():
-        apply_theme(child)
+    if hasattr(window, 'GetChildren'):
+        for child in window.GetChildren():
+            apply_theme(child)
 
-    window.Refresh()
+    if hasattr(window, 'Refresh'):
+        window.Refresh()
+
+
+def _create_dialog_buttons(panel, style):
+    button_sizer = wx.StdDialogButtonSizer()
+    created = []
+
+    def add_button(button_id, label):
+        button = wx.Button(panel, button_id, label)
+        button_sizer.AddButton(button)
+        created.append(button)
+
+    if style & wx.OK:
+        add_button(wx.ID_OK, "OK")
+    if style & wx.YES:
+        add_button(wx.ID_YES, "Yes")
+    if style & wx.NO:
+        add_button(wx.ID_NO, "No")
+    if style & wx.CANCEL:
+        add_button(wx.ID_CANCEL, "Cancel")
+    if style & wx.CLOSE and not (style & (wx.OK | wx.CANCEL | wx.YES | wx.NO)):
+        add_button(wx.ID_CLOSE, "Close")
+
+    if created:
+        button_sizer.Realize()
+    return button_sizer
 
 
 def show_dark_text_dialog(parent, message, caption, value=""):
-    dlg = wx.TextEntryDialog(parent, message, caption, value)
+    dlg = wx.Dialog(parent, title=caption, style=wx.DEFAULT_DIALOG_STYLE)
+    panel = wx.Panel(dlg)
+
+    text = wx.StaticText(panel, label=message)
+    text.Wrap(520)
+
+    text_ctrl = wx.TextCtrl(panel, value=value, style=wx.TE_LEFT)
+
+    button_sizer = _create_dialog_buttons(panel, wx.OK | wx.CANCEL)
+
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+    main_sizer.Add(text, 0, wx.ALL | wx.EXPAND, 12)
+    main_sizer.Add(text_ctrl, 0, wx.ALL | wx.EXPAND, 12)
+    main_sizer.Add(button_sizer, 0, wx.ALL | wx.ALIGN_CENTER, 8)
+
+    panel.SetSizer(main_sizer)
+    main_sizer.Fit(dlg)
+    dlg.SetMinSize((560, dlg.GetSize().GetHeight()))
+
     apply_theme(dlg)
     result = dlg.ShowModal()
-    text = dlg.GetValue()
+    text_value = text_ctrl.GetValue()
     dlg.Destroy()
-    return result, text
+    return result, text_value
 
 
 def show_dark_message(parent, message, caption, style=wx.OK):
-    dlg = wx.MessageDialog(parent, message, caption, style)
+    dlg = wx.Dialog(parent, title=caption, style=wx.DEFAULT_DIALOG_STYLE)
+    panel = wx.Panel(dlg)
+
+    text = wx.StaticText(panel, label=message)
+    text.Wrap(520)
+
+    button_sizer = _create_dialog_buttons(panel, style)
+
+    main_sizer = wx.BoxSizer(wx.VERTICAL)
+    main_sizer.Add(text, 0, wx.ALL | wx.EXPAND, 12)
+    main_sizer.Add(button_sizer, 0, wx.ALL | wx.ALIGN_CENTER, 8)
+
+    panel.SetSizer(main_sizer)
+    main_sizer.Fit(dlg)
+    dlg.SetMinSize((560, dlg.GetSize().GetHeight()))
+
     apply_theme(dlg)
     result = dlg.ShowModal()
     dlg.Destroy()
@@ -862,7 +934,7 @@ class HideableWidget(wx.Frame):
         pyperclip.copy(database[pieces[0]][pieces[1]][pieces[2]]["path"])
 
     def HelpWindow(self, event):
-        helpText = "Features\n\nFavorites tree:\n\
+        helpText = "Features\n---------\nFavorites tree:\n\
         - You can organize your stuff in 3 levels of hierarchy, it cannot be less or more though\n\
         - Your favorites are stored in `links.csv` in the same folder, don't mess it up\n\
         - You can add, change or rename any favorite in the tree with a right click\n\
@@ -874,7 +946,7 @@ class HideableWidget(wx.Frame):
         - Your search string will be split by spaces and used in AND relation\n\
         - Your search string will match non-visible metadata too\n\
               e.g. the type of the favorite (folder, svn, etc.)\n\nSupport:\n\
-        david.dudas@thyssenkrupp.com"
+        david.dudas@variosystems.com"
         show_dark_message(self, helpText, "favorit3S.ai", wx.OK | wx.ICON_INFORMATION)
         event.Skip()
 
@@ -895,6 +967,8 @@ class HideableWidget(wx.Frame):
         self.menu.Append(wx.ID_SEPARATOR)
         self.deleteMenu = self.menu.Append(-1,'Remove')
         self.Bind(wx.EVT_MENU, self.OnPopupItemDelete, self.deleteMenu)
+
+        apply_theme(self.menu)
 
     def __del__(self):
         pass
