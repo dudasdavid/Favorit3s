@@ -959,7 +959,7 @@ class HideableWidget(wx.Frame):
         - Your search string will be split by spaces and used in AND relation\n\
         - Your search string will match non-visible metadata too\n\
               e.g. the type of the favorite (folder, svn, etc.)\n\nSupport:\n\
-        david.dudas@variosystems.com"
+        david.dudas@outlook.com"
         show_dark_message(self, helpText, "favorit3S.ai", wx.OK | wx.ICON_INFORMATION)
         event.Skip()
 
