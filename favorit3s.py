@@ -190,9 +190,11 @@ def apply_theme(window):
 def _create_dialog_buttons(panel, style):
     button_sizer = wx.StdDialogButtonSizer()
     created = []
+    dialog = panel.GetParent()
 
     def add_button(button_id, label):
         button = wx.Button(panel, button_id, label)
+        button.Bind(wx.EVT_BUTTON, lambda event, dlg=dialog, button_id=button_id: dlg.EndModal(button_id))
         button_sizer.AddButton(button)
         created.append(button)
 
@@ -233,6 +235,7 @@ def show_dark_text_dialog(parent, message, caption, value=""):
     dlg.SetMinSize((560, dlg.GetSize().GetHeight()))
 
     apply_theme(dlg)
+    dlg.CentreOnScreen()
     result = dlg.ShowModal()
     text_value = text_ctrl.GetValue()
     dlg.Destroy()
@@ -257,6 +260,7 @@ def show_dark_message(parent, message, caption, style=wx.OK):
     dlg.SetMinSize((560, dlg.GetSize().GetHeight()))
 
     apply_theme(dlg)
+    dlg.CentreOnScreen()
     result = dlg.ShowModal()
     dlg.Destroy()
     return result
@@ -1373,18 +1377,26 @@ if lockExists:
             
     # if the PID from lockfile is still running within the OS, bring it to the front
     if lockPid in pythonPids:
-        # Switch to the already running app or give a warning message?
-        # vbs cannot reposition the window, only activating it
-        # e.g. switch_window.vbs 27076
-        # subprocess.Popen(["cmd", "/c", "switch_window.vbs", f"{lockPid}"])
-        # with Powershell we can even reposition the window!
-        # e.g. powershell -executionpolicy remotesigned -File switch_window.ps1 27076
-        print(f"[INFO] Application is already running with PID: {lockPid}. Switch to the application using powershell.")
-        subprocess.Popen(["cmd", "/c", "powershell", "-executionpolicy", "remotesigned", "-File", "switch_window.ps1", f"{lockPid}"])
-        
-        # Don't show warning message, just exit after re-centering the window
-        #wx.MessageBox("SVN bookmarks is already running!", 'Warning', wx.OK | wx.ICON_WARNING)
-        sys.exit()
+        message = (
+            "Favorit3s is already running.\n\n"
+            "Do you want to close the existing instance and start a new one?\n"
+            "Choose No to keep the current instance."
+        )
+        result = show_dark_message(None, message, 'Favorit3s already running', wx.YES_NO | wx.ICON_WARNING)
+        if result == wx.ID_YES:
+            try:
+                proc = psutil.Process(lockPid)
+                proc.kill()
+                proc.wait(timeout=5)
+                print(f"[INFO] Killed existing Favorit3s instance with PID {lockPid}.")
+            except Exception as exc:
+                print(f"[WARN] Could not kill PID {lockPid}: {exc}")
+            try:
+                os.remove('lockfile')
+            except Exception:
+                pass
+        else:
+            sys.exit()
 
 # create a lock file with the current pid
 file = open("lockfile", 'w')
