@@ -6,3 +6,11 @@ lockfile
 open_sections.txt
 
 *.pyc
+
+favorit3s.spec
+
+dist/
+
+build/
+
+*.exe
