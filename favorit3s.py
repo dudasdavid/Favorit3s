@@ -9,8 +9,10 @@ import pyperclip                                 # cross platform clipboard hand
 import csv
 import subprocess
 import os
+import sys
 import time
 import ctypes
+import argparse
 
 import locale
 locale.setlocale(locale.LC_ALL, 'C')
@@ -19,9 +21,11 @@ locale.setlocale(locale.LC_ALL, 'C')
 # Configuration flags
 USE_TC = True # Set to True to use Total commander or False to use Windows explorer
 
-# Dark Windows theme. wx.SystemOptions lets wx ask Windows for dark native
-# chrome where the installed wxPython version supports it.
-wx.SystemOptions.SetOption("msw.dark-mode", 2)
+# Theme support: allow dark or light mode via command-line flags.
+THEME_DARK = "dark"
+THEME_LIGHT = "light"
+CURRENT_THEME = THEME_DARK
+
 DARK_BG = wx.Colour(32, 32, 32)
 DARK_PANEL = wx.Colour(43, 43, 43)
 DARK_FIELD = wx.Colour(25, 25, 25)
@@ -29,6 +33,48 @@ DARK_BORDER = wx.Colour(64, 64, 64)
 DARK_TEXT = wx.Colour(240, 240, 240)
 DARK_MUTED_TEXT = wx.Colour(180, 180, 180)
 DARK_ACCENT = wx.Colour(0, 120, 215)
+
+LIGHT_BG = wx.Colour(255, 255, 255)
+LIGHT_PANEL = wx.Colour(240, 240, 240)
+LIGHT_FIELD = wx.Colour(255, 255, 255)
+LIGHT_BORDER = wx.Colour(200, 200, 200)
+LIGHT_TEXT = wx.Colour(0, 0, 0)
+LIGHT_MUTED_TEXT = wx.Colour(100, 100, 100)
+LIGHT_ACCENT = wx.Colour(0, 120, 215)
+
+
+def is_dark_theme():
+    return CURRENT_THEME == THEME_DARK
+
+
+def get_theme_color(dark_color, light_color):
+    return dark_color if is_dark_theme() else light_color
+
+
+def set_theme(theme):
+    global CURRENT_THEME
+    if theme not in (THEME_DARK, THEME_LIGHT):
+        theme = THEME_DARK
+    CURRENT_THEME = theme
+
+    if os.name == "nt":
+        wx.SystemOptions.SetOption("msw.dark-mode", 2 if is_dark_theme() else 0)
+
+
+def parse_command_line():
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--theme", choices=(THEME_DARK, THEME_LIGHT), help="Theme to use")
+    parser.add_argument("--dark", dest="theme", action="store_const", const=THEME_DARK, help="Use dark theme")
+    parser.add_argument("--light", dest="theme", action="store_const", const=THEME_LIGHT, help="Use light theme")
+    parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
+    args, unknown = parser.parse_known_args()
+    if args.theme:
+        set_theme(args.theme)
+    else:
+        set_theme(CURRENT_THEME)
+
+    if unknown:
+        print(f"[WARN] Ignoring unknown arguments: {' '.join(unknown)}")
 
 
 def enable_windows_dark_widgets(window):
@@ -72,36 +118,37 @@ def enable_windows_dark_widgets(window):
         pass
 
 
-def apply_dark_theme(window):
+def apply_theme(window):
     if window is None:
         return
 
-    enable_windows_dark_widgets(window)
+    if is_dark_theme():
+        enable_windows_dark_widgets(window)
 
     if isinstance(window, (wx.TextCtrl, wx.SearchCtrl)):
-        window.SetBackgroundColour(DARK_FIELD)
-        window.SetForegroundColour(DARK_TEXT)
+        window.SetBackgroundColour(get_theme_color(DARK_FIELD, LIGHT_FIELD))
+        window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
     elif isinstance(window, wx.TreeCtrl):
-        window.SetBackgroundColour(DARK_FIELD)
-        window.SetForegroundColour(DARK_TEXT)
+        window.SetBackgroundColour(get_theme_color(DARK_FIELD, LIGHT_FIELD))
+        window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
     elif isinstance(window, wx.Button):
-        window.SetBackgroundColour(DARK_PANEL)
-        window.SetForegroundColour(DARK_TEXT)
+        window.SetBackgroundColour(get_theme_color(DARK_PANEL, LIGHT_PANEL))
+        window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
     elif isinstance(window, (wx.Frame, wx.Dialog, wx.Panel)):
-        window.SetBackgroundColour(DARK_BG)
-        window.SetForegroundColour(DARK_TEXT)
+        window.SetBackgroundColour(get_theme_color(DARK_BG, LIGHT_BG))
+        window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
     elif isinstance(window, wx.StaticText):
-        window.SetForegroundColour(DARK_TEXT)
+        window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
 
     for child in window.GetChildren():
-        apply_dark_theme(child)
+        apply_theme(child)
 
     window.Refresh()
 
 
 def show_dark_text_dialog(parent, message, caption, value=""):
     dlg = wx.TextEntryDialog(parent, message, caption, value)
-    apply_dark_theme(dlg)
+    apply_theme(dlg)
     result = dlg.ShowModal()
     text = dlg.GetValue()
     dlg.Destroy()
@@ -110,7 +157,7 @@ def show_dark_text_dialog(parent, message, caption, value=""):
 
 def show_dark_message(parent, message, caption, style=wx.OK):
     dlg = wx.MessageDialog(parent, message, caption, style)
-    apply_dark_theme(dlg)
+    apply_theme(dlg)
     result = dlg.ShowModal()
     dlg.Destroy()
     return result
@@ -357,8 +404,8 @@ class HideableWidget(wx.Frame):
 
         #self.frame = wx.Frame.__init__ (self, None, id = wx.ID_ANY, title = u"Favorites2.1", pos = wx.DefaultPosition, size = wx.Size(self.size[0],self.size[1]), style = wx.CAPTION|wx.CLOSE_BOX|wx.MINIMIZE_BOX|wx.STAY_ON_TOP|wx.SYSTEM_MENU|wx.TAB_TRAVERSAL)
         self.SetIcon(main_icon.GetIcon()) # Fix icon first
-        self.SetBackgroundColour(DARK_BG)
-        self.SetForegroundColour(DARK_TEXT)
+        self.SetBackgroundColour(get_theme_color(DARK_BG, LIGHT_BG))
+        self.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
         #self.SetSizeHintsSz(wx.DefaultSize, wx.DefaultSize)
         
         # we only have a single tree controller
@@ -370,7 +417,7 @@ class HideableWidget(wx.Frame):
         self.help_button = wx.Button(self, wx.ID_ANY, "?", wx.DefaultPosition, wx.Size(15,-1), wx.BORDER_NONE)
         font = wx.Font(8, wx.FONTFAMILY_MODERN, 0, 90, underline = False, faceName ="")
         self.help_button.SetFont(font)
-        apply_dark_theme(self)
+        apply_theme(self)
         topSizer = wx.BoxSizer(wx.HORIZONTAL)
         verticalSizer = wx.BoxSizer(wx.VERTICAL)
         
@@ -431,7 +478,7 @@ class HideableWidget(wx.Frame):
 
         self.Centre()
         self.Show()
-        apply_dark_theme(self)
+        apply_theme(self)
 
     def on_activate(self, event):
         if event.GetActive():
@@ -1346,6 +1393,8 @@ if __name__ == '__main__':
 ##########################
 
 print(f"[INFO] Application started.")
+
+parse_command_line()
 
 database = {}
 # we have to start the wxApp to show popups during lockfile check
