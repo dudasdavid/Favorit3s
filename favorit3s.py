@@ -1094,6 +1094,19 @@ def loadDataBase():
     root = frame.m_treeCtrl2.AddRoot('My favorites')
     
     # read csv file's lines to rows[]
+    if not os.path.exists('links.csv'):
+        with open('links.csv', 'w', encoding='utf-8') as f:
+            f.write(
+                'Example folder 1\n'
+                'Example folder 1;Subfolder 1\n'
+                'Example folder 1;Subfolder 1;Google;link;https://google.com\n'
+                'Example folder 1;Subfolder 1;YouTube;link;https://youtube.com\n'
+                'Example folder 1;Subfolder 2\n'
+                'Example folder 1;Subfolder 2;GitHub;link;https://github.com\n'
+                'Example folder 2\n'
+                'Example folder 2;Subfolder 3\n'
+                'Example folder 2;Subfolder 3;Stack Overflow;link;https://stackoverflow.com\n'
+            )
     file = open('links.csv', encoding="utf-8")
     csvReader = csv.reader(file) # unfortunately dialect='unix' or delimiter=";" doesn't help, you cannot use commas in the alias
 
@@ -1201,6 +1214,19 @@ def loadSearch(searchText):
     # but filtering the database dictionary sucks compared to filtering file reading, so I don't want to do that :-(
     
     # read csv file's lines to rows[]
+    if not os.path.exists('links.csv'):
+        with open('links.csv', 'w', encoding='utf-8') as f:
+            f.write(
+                'Example folder 1\n'
+                'Example folder 1;Subfolder 1\n'
+                'Example folder 1;Subfolder 1;Google;link;https://google.com\n'
+                'Example folder 1;Subfolder 1;YouTube;link;https://youtube.com\n'
+                'Example folder 1;Subfolder 2\n'
+                'Example folder 1;Subfolder 2;GitHub;link;https://github.com\n'
+                'Example folder 2\n'
+                'Example folder 2;Subfolder 3\n'
+                'Example folder 2;Subfolder 3;Stack Overflow;link;https://stackoverflow.com\n'
+            )
     file = open('links.csv', encoding="utf-8")
     csvReader = csv.reader(file)
 
