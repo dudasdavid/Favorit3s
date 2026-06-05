@@ -119,17 +119,23 @@ def enable_windows_dark_widgets(window):
 
 
 def make_search_cancel_bitmap():
-    size = 16
+    size = 18
     bmp = wx.Bitmap(size, size)
     dc = wx.MemoryDC(bmp)
     dc.SetBackground(wx.Brush(DARK_FIELD))
     dc.Clear()
-    dc.SetBrush(wx.Brush(DARK_FIELD))
-    dc.SetPen(wx.Pen(DARK_BORDER))
-    dc.DrawCircle(size // 2, size // 2, size // 2 - 1)
-    dc.SetPen(wx.Pen(DARK_TEXT, 2))
-    dc.DrawLine(4, 4, size - 5, size - 5)
-    dc.DrawLine(4, size - 5, size - 5, 4)
+
+    button_fill = wx.Brush(wx.Colour(45, 45, 45))
+    button_pen = wx.Pen(wx.Colour(110, 110, 110), 1)
+    dc.SetBrush(button_fill)
+    dc.SetPen(button_pen)
+    dc.DrawCircle(size // 2, size // 2, 7)
+
+    x_pen = wx.Pen(wx.Colour(205, 205, 205), 1)
+    dc.SetPen(x_pen)
+    dc.DrawLine(6, 6, size - 5, size - 5)
+    dc.DrawLine(size - 6, 6, 5, size - 5)
+
     dc.SelectObject(wx.NullBitmap)
     return bmp
 
