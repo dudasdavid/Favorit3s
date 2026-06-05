@@ -118,6 +118,22 @@ def enable_windows_dark_widgets(window):
         pass
 
 
+def make_search_cancel_bitmap():
+    size = 16
+    bmp = wx.Bitmap(size, size)
+    dc = wx.MemoryDC(bmp)
+    dc.SetBackground(wx.Brush(DARK_FIELD))
+    dc.Clear()
+    dc.SetBrush(wx.Brush(DARK_FIELD))
+    dc.SetPen(wx.Pen(DARK_BORDER))
+    dc.DrawCircle(size // 2, size // 2, size // 2 - 1)
+    dc.SetPen(wx.Pen(DARK_TEXT, 2))
+    dc.DrawLine(4, 4, size - 5, size - 5)
+    dc.DrawLine(4, size - 5, size - 5, 4)
+    dc.SelectObject(wx.NullBitmap)
+    return bmp
+
+
 def apply_theme(window):
     if window is None:
         return
@@ -128,6 +144,11 @@ def apply_theme(window):
     if isinstance(window, (wx.TextCtrl, wx.SearchCtrl)):
         window.SetBackgroundColour(get_theme_color(DARK_FIELD, LIGHT_FIELD))
         window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
+        if isinstance(window, wx.SearchCtrl) and is_dark_theme():
+            try:
+                window.SetCancelBitmap(make_search_cancel_bitmap())
+            except Exception:
+                pass
     elif isinstance(window, wx.TreeCtrl):
         window.SetBackgroundColour(get_theme_color(DARK_FIELD, LIGHT_FIELD))
         window.SetForegroundColour(get_theme_color(DARK_TEXT, LIGHT_TEXT))
@@ -221,6 +242,13 @@ class HideableWidget(wx.Frame):
         if is_dark_theme():
             self.search_bar.SetBackgroundColour(DARK_FIELD)
             self.search_bar.SetForegroundColour(DARK_TEXT)
+            for child in self.search_bar.GetChildren():
+                try:
+                    child.SetBackgroundColour(DARK_FIELD)
+                    child.SetForegroundColour(DARK_TEXT)
+                    child.Refresh()
+                except Exception:
+                    pass
         self.help_button = wx.Button(self, wx.ID_ANY, "?", wx.DefaultPosition, wx.Size(15,-1), wx.BORDER_NONE)
         font = wx.Font(8, wx.FONTFAMILY_MODERN, 0, 90, underline = False, faceName ="")
         self.help_button.SetFont(font)
