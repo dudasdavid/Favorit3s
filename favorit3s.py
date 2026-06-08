@@ -203,6 +203,8 @@ def _create_dialog_buttons(panel, style):
 
     def add_button(button_id, label):
         button = wx.Button(panel, button_id, label)
+        if button_id == wx.ID_OK:
+            button.SetDefault()
         button.Bind(wx.EVT_BUTTON, lambda event, dlg=dialog, button_id=button_id: dlg.EndModal(button_id))
         button_sizer.AddButton(button)
         created.append(button)
@@ -228,9 +230,10 @@ def show_dark_text_dialog(parent, message, caption, value=""):
     panel = wx.Panel(dlg)
 
     text = wx.StaticText(panel, label=message)
-    text.Wrap(520)
+    text.Wrap(420)
 
-    text_ctrl = wx.TextCtrl(panel, value=value, style=wx.TE_LEFT)
+    text_ctrl = wx.TextCtrl(panel, value=value, style=wx.TE_LEFT | wx.TE_PROCESS_ENTER)
+    text_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda event: dlg.EndModal(wx.ID_OK))
 
     button_sizer = _create_dialog_buttons(panel, wx.OK | wx.CANCEL)
 
@@ -241,7 +244,8 @@ def show_dark_text_dialog(parent, message, caption, value=""):
 
     panel.SetSizer(main_sizer)
     main_sizer.Fit(dlg)
-    dlg.SetMinSize((560, dlg.GetSize().GetHeight()))
+    dlg.SetMinSize((460, dlg.GetSize().GetHeight()))
+    dlg.SetSize((460, dlg.GetSize().GetHeight()))
 
     apply_theme(dlg)
     dlg.CentreOnScreen()
