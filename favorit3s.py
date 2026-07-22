@@ -20,6 +20,7 @@ locale.setlocale(locale.LC_ALL, 'C')
 
 # Configuration flags
 USE_TC = True # Set to True to use Total commander or False to use Windows explorer
+USE_MIRO_APP = True
 
 # Theme support: allow dark or light mode via command-line flags.
 THEME_DARK = "dark"
@@ -259,12 +260,21 @@ def show_dark_message(parent, message, caption, style=wx.OK):
     dlg = wx.Dialog(parent, title=caption, style=wx.DEFAULT_DIALOG_STYLE)
     panel = wx.Panel(dlg)
 
+    warning_bmp = wx.ArtProvider.GetBitmap(
+        wx.ART_WARNING,
+        wx.ART_MESSAGE_BOX,
+        wx.Size(32, 32)
+    )
+
+    #icon = wx.StaticBitmap(panel, bitmap=warning_bmp)
+
     text = wx.StaticText(panel, label=message)
     text.Wrap(520)
 
     button_sizer = _create_dialog_buttons(panel, style)
 
     main_sizer = wx.BoxSizer(wx.VERTICAL)
+    # main_sizer.Add(icon, 0, wx.ALL | wx.ALIGN_TOP, 16)
     main_sizer.Add(text, 0, wx.ALL | wx.EXPAND, 12)
     main_sizer.Add(button_sizer, 0, wx.ALL | wx.ALIGN_CENTER, 8)
 
@@ -674,6 +684,8 @@ class HideableWidget(wx.Frame):
                 else:
                     subprocess.Popen(["explorer", path])                                                      # to open with windows file explorer
             elif linkType == "link":                                                                          # it will open with the default web browser
+               if "https://miro.com" in path and USE_MIRO_APP:                                                # check USE_MIRO_APP flag
+                    path = path.replace("https://miro.com", "miroapp://miro.com")
                subprocess.Popen(["cmd", "/c", "start", path])
             elif linkType == "svn":                                                                           # it will open the SVN link with Tortoise
                tortoise = r'C://Program Files//TortoiseSVN//bin//TortoiseProc.exe'
