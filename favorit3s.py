@@ -12,17 +12,16 @@ import os
 import sys
 import time
 import ctypes
-import argparse
-
+import tomllib
 import locale
 locale.setlocale(locale.LC_ALL, 'C')
 
 
 # Configuration flags
-USE_TC = True # Set to True to use Total commander or False to use Windows explorer
-USE_MIRO_APP = True
+USE_TC = None       # Set it in the config file to True to use Total commander or False to use Windows explorer
+USE_MIRO_APP = None # Set it in the config file to True to use Miro app or False to use default browser for opening links
 
-# Theme support: allow dark or light mode via command-line flags.
+# Theme support.
 THEME_DARK = "dark"
 THEME_LIGHT = "light"
 CURRENT_THEME = THEME_DARK
@@ -55,36 +54,43 @@ def get_theme_color(dark_color, light_color):
 def set_theme(theme):
     global CURRENT_THEME
     if theme not in (THEME_DARK, THEME_LIGHT):
-        theme = THEME_DARK
+        if isinstance(theme, bool):
+            theme = THEME_DARK if theme else THEME_LIGHT
+        else:
+            theme = THEME_DARK
     CURRENT_THEME = theme
 
     if os.name == "nt":
         wx.SystemOptions.SetOption("msw.dark-mode", 2 if is_dark_theme() else 0)
 
 
-def detect_theme_file():
+def get_config_path():
     if getattr(sys, 'frozen', False):
         app_dir = os.path.dirname(sys.executable)
     else:
         app_dir = os.path.dirname(os.path.abspath(__file__))
-    marker_file = os.path.join(app_dir, 'light')
-    return THEME_LIGHT if os.path.exists(marker_file) else THEME_DARK
+    return os.path.join(app_dir, 'config.toml')
 
 
-def parse_command_line():
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument("--theme", choices=(THEME_DARK, THEME_LIGHT), help="Theme to use")
-    parser.add_argument("--dark", dest="theme", action="store_const", const=THEME_DARK, help="Use dark theme")
-    parser.add_argument("--light", dest="theme", action="store_const", const=THEME_LIGHT, help="Use light theme")
-    parser.add_argument("-h", "--help", action="help", help="Show this help message and exit")
-    args, unknown = parser.parse_known_args()
-    if args.theme:
-        set_theme(args.theme)
+def parse_config():
+    config_path = get_config_path()
+    config_data = {}
+
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'rb') as config_file:
+                if tomllib is None:
+                    raise RuntimeError("tomllib/tomli is not available")
+                config_data = tomllib.load(config_file).get("config", {})
+        except Exception as exc:
+            print(f"[WARN] Could not read configuration from {config_path}: {exc}")
     else:
-        set_theme(detect_theme_file())
+        print(f"[WARN] Configuration file not found at {config_path}; using defaults.")
 
-    if unknown:
-        print(f"[WARN] Ignoring unknown arguments: {' '.join(unknown)}")
+    global USE_TC, USE_MIRO_APP
+    USE_TC = bool(config_data.get("use_totalcommander", False))
+    USE_MIRO_APP = bool(config_data.get("use_miroapp", False))
+    set_theme(config_data.get("dark_theme", True))
 
 
 def enable_windows_dark_widgets(window):
@@ -1414,7 +1420,7 @@ if __name__ == '__main__':
 
 print(f"[INFO] Application started.")
 
-parse_command_line()
+parse_config()
 
 database = {}
 # we have to start the wxApp to show popups during lockfile check
