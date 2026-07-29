@@ -1,0 +1,6 @@
+# Configuration file of Favorit3s
+
+[config]
+use_totalcommander = false
+use_miroapp = false
+dark_theme = false
