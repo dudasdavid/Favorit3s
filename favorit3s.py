@@ -681,8 +681,10 @@ class HideableWidget(wx.Frame):
             linkType = database[pieces[0]][pieces[1]][pieces[2]]["type"]
 
         if path != "root":
-            if linkType == "file":                                                                            # if it's a file execute it with explorer
-                subprocess.Popen(["explorer", path])
+            if linkType == "file":
+                #print(f"[INFO] Opening file: {path}")
+                working_dir = os.path.dirname(path)
+                subprocess.Popen([path], cwd=working_dir)
             elif linkType == "folder":                                                                        # open folder with TC or explorer
                 if USE_TC:                                                                                    # check USE_TC flag
                     subprocess.Popen(["cmd", "/c", "C:\\totalcmd\\TOTALCMD64.EXE", "/O", "/T", f"/L={path}"]) # to open with total commander
